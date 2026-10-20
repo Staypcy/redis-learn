@@ -25,8 +25,28 @@ string toUpper(string s) {
     return s;
 }
 
+// RESP 格式序列化器
+std::string simple_string(std::string s){
+    return "+"+s+"\r\n";
+}
+
+std::string error(std::string msg){
+    return "-"+msg+"\r\n";
+}
+
+std::string integers(int n){
+    return ":" + std::to_string(n)+"\r\n";
+}
+
+std::string bulk_string(std::string s){
+    if(s.empty()){
+        return "$-1\r\n";
+    }
+    return "$"+std::to_string(s.size())+"\r\n"+s+"\r\n";
+}
+
 string encodeBulkString(const string& s) {
-    return "$" + to_string(s.size()) + "\r\n" + s + "\r\n";
+    return bulk_string(s);
 }
 
 string handleCommand(const vector<string>& args) {
@@ -34,16 +54,18 @@ string handleCommand(const vector<string>& args) {
 
     if (cmd == "PING") {
         if(args.size() == 1){
-            return "+PONG\r\n";
+            return simple_string("PONG");
         }else{
             return encodeBulkString(args[1]);
         }
     }else if(cmd == "ECHO" && args.size() == 2){
         //"$<len>\r\n<message>\r\n"
         return encodeBulkString(args[1]);
+    }else if(cmd == "COMMAND" && args[1] == "DOCS"){
+        return simple_string("OK");
     }
 
-    return "-ERR unknown command\r\n";
+    return error("ERR unknown command '"+args[0]+"'");
 }
 
 int main() {
