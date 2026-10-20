@@ -38,6 +38,9 @@ string handleCommand(const vector<string>& args) {
         }else{
             return encodeBulkString(args[1]);
         }
+    }else if(cmd == "ECHO" && args.size() == 2){
+        //"$<len>\r\n<message>\r\n"
+        return encodeBulkString(args[1]);
     }
 
     return "-ERR unknown command\r\n";
