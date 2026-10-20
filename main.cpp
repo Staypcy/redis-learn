@@ -2,8 +2,27 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include<map>
 
 using namespace std;
+
+std::map<std::string,std::vector<int>>ARITY = {
+    {"PING", {0, 1}},
+    {"ECHO", {1, 1}},
+    {"COMMAND",{1,1}}
+};
+
+std::string check_arity(const std::string& cmd, const vector<string>& args){
+    auto it = ARITY.find(cmd);
+    if (it == ARITY.end()) {
+        return "ERR unknown command '" + cmd + "'";
+    }
+    const auto& p = it->second;
+    if (args.size() - 1 >= p[0] && args.size() - 1 <= p[1]) {
+        return {};
+    }
+    return "ERR wrong number of arguments for '" + cmd + "' command";
+}
 
 vector<string> parseArgs(const string& line) {
     vector<string> args;
@@ -26,11 +45,11 @@ string toUpper(string s) {
 }
 
 // RESP 格式序列化器
-std::string simple_string(std::string s){
+std::string simple_string(const std::string& s){
     return "+"+s+"\r\n";
 }
 
-std::string error(std::string msg){
+std::string error(const std::string& msg){
     return "-"+msg+"\r\n";
 }
 
@@ -38,7 +57,7 @@ std::string integers(int n){
     return ":" + std::to_string(n)+"\r\n";
 }
 
-std::string bulk_string(std::string s){
+std::string bulk_string(const std::string& s){
     if(s.empty()){
         return "$-1\r\n";
     }
@@ -50,22 +69,35 @@ string encodeBulkString(const string& s) {
 }
 
 string handleCommand(const vector<string>& args) {
+    if (args.empty()) return {};
+
     string cmd = toUpper(args[0]);
+    std::string check = check_arity(cmd,args);
 
     if (cmd == "PING") {
-        if(args.size() == 1){
-            return simple_string("PONG");
-        }else{
-            return encodeBulkString(args[1]);
-        }
-    }else if(cmd == "ECHO" && args.size() == 2){
-        //"$<len>\r\n<message>\r\n"
-        return encodeBulkString(args[1]);
-    }else if(cmd == "COMMAND" && args[1] == "DOCS"){
-        return simple_string("OK");
-    }
 
-    return error("ERR unknown command '"+args[0]+"'");
+        if(!check.empty()) return error(check);
+
+        if(args.size() == 1) return simple_string("PONG");
+
+        else if(args.size() == 2) return encodeBulkString(args[1]);
+
+    }else if(cmd == "ECHO"){
+
+        if(!check.empty()) return error(check);
+
+        return encodeBulkString(args[1]);
+    
+    }else if(cmd == "COMMAND"){
+
+        if(!check.empty()) return error(check);
+        
+        if(args[1] == "DOCS") return simple_string("OK");
+
+        return error("ERR unknow command argument of '"+ cmd + " '");
+
+    }
+    return error("ERR unknown command '"+cmd+"'");
 }
 
 int main() {
